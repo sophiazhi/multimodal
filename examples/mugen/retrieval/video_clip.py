@@ -14,7 +14,7 @@ from torch import nn
 from torchmultimodal.models.clip import CLIP
 from torchmultimodal.transforms.bert_text_transform import BertTextTransform
 from torchmultimodal.transforms.video_transform import VideoTransform
-from torchmultimodal.utils.common import PretrainedMixin
+from torchmultimodal.utils.common import get_current_device, PretrainedMixin
 from transformers import DistilBertConfig, DistilBertModel
 
 
@@ -78,8 +78,8 @@ class TextEncoder(nn.Module, HuggingFaceMixin):
         return (input_ids != self.padding_value).to(dtype=int)
 
     def forward(self, text):
-        input_ids = self.text_transform(text)
-        attention_mask = self.build_attention_mask(input_ids)
+        input_ids = self.text_transform(text).to(get_current_device())
+        attention_mask = self.build_attention_mask(input_ids).to(get_current_device())
         output = self.model(input_ids=input_ids, attention_mask=attention_mask)
         last_hidden_state = output.last_hidden_state
         return last_hidden_state[:, self.target_token_idx, :]
