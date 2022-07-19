@@ -12,6 +12,8 @@ from examples.mugen.retrieval.s3d import S3D
 from torch import nn
 
 from torchmultimodal.models.clip import CLIP
+from torchmultimodal.transforms.bert_text_transform import BertTextTransform
+from torchmultimodal.transforms.video_transform import VideoTransform
 from torchmultimodal.utils.common import PretrainedMixin
 from transformers import DistilBertConfig, DistilBertModel
 
@@ -70,11 +72,13 @@ class TextEncoder(nn.Module, HuggingFaceMixin):
         )
         self.model = DistilBertModel(config=distilbert_config)
         self.out_dim = self.model.config.dim
+        self.text_transform = BertTextTransform()
 
     def build_attention_mask(self, input_ids: torch.Tensor) -> torch.Tensor:
         return (input_ids != self.padding_value).to(dtype=int)
 
-    def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
+    def forward(self, text):
+        input_ids = self.text_transform(text)
         attention_mask = self.build_attention_mask(input_ids)
         output = self.model(input_ids=input_ids, attention_mask=attention_mask)
         last_hidden_state = output.last_hidden_state
@@ -100,8 +104,10 @@ class VideoEncoder(nn.Module, PretrainedMixin):
         self.model = S3D(400)
         self.out_dim = self.model.fc.in_channels
         self.model.fc = nn.Identity()
+        self.video_transform = VideoTransform()
 
     def forward(self, x):
+        x = self.video_transform(x)
         if x.shape[1] != 3:
             raise ValueError(
                 "Channels must be at first (zero-indexed) dimension of input and of size 3."
